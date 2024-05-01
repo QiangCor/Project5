@@ -87,8 +87,8 @@ unsigned long get_cache_tag(cache_t *cache, unsigned long addr) {
 unsigned long get_cache_index(cache_t *cache, unsigned long addr) {
   // FIX THIS CODE!
   unsigned long mask = (1UL << cache->n_index_bit) - 1;
-  unsigned long index = (index << cache->n_tag_bit);
-  index = index << (cache->n_tag_bit+cache->n_offset_bit) & mask;
+  unsigned long index = (addr << cache->n_tag_bit);
+  index = index >> (cache->n_tag_bit+cache->n_offset_bit) & mask;
   return index;
   
 }
@@ -129,6 +129,9 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   unsigned long tag = get_cache_tag(cache, addr);
   unsigned long index = get_cache_index(cache, addr);
   unsigned long block_addr = get_cache_block_addr(cache, addr);
+  printf("tag: %lu\n", tag);
+  printf("index: %lu\n", index);
+  printf("block_addr %lu\n", block_addr);
 
   // Look up the address in the cache
   for (int i = 0; i < cache->assoc; i++) {
@@ -143,7 +146,7 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
         cache->lines[index][i].dirty_f = true; // Set dirty flag
       }
       // Update LRU_way
-      cache->lru_way[index] = i;
+      cache->lru_way[index] = (i+1) % cache->assoc;
       return true;
     }
   }
@@ -158,7 +161,9 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   }
 
   // Find the LRU line
+  
   int lru_line = cache->lru_way[index];
+  cache->lru_way[index]= (lru_line + 1) % cache->assoc;
 
   // Update cache tags, state, and dirty flags
   cache->lines[index][lru_line].tag = tag;
