@@ -20,7 +20,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   #include <math.h>
 
 
-  cache->n_cache_line = log2(cache->capacity / cache->block_size);
+  cache->n_cache_line = cache->capacity / cache->block_size;
   cache->n_set = cache->capacity/(cache->block_size * cache->assoc);
   cache->n_offset_bit = log2(cache->block_size);
   cache->n_index_bit = log2(cache->capacity/(cache->block_size * cache->assoc));
@@ -117,13 +117,59 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr) {
  * return true if there was a hit, false if there was a miss
  * Use the "get" helper functions above. They make your life easier.
  */
+/*
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   // FIX THIS CODE!
+ 
+  return true;  // cache hit should return true
+}
+*/
+
+bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   unsigned long tag = get_cache_tag(cache, addr);
   unsigned long index = get_cache_index(cache, addr);
   unsigned long block_addr = get_cache_block_addr(cache, addr);
 
+  // Look up the address in the cache
+  for (int i = 0; i < cache->assoc; i++) {
+    if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID) {
+      // Cache hit
+      if (action == LOAD) {
+        // Update cache statistics for read access
+        update_stats(cache->stats, true, false, false, LOAD);
+      } else if (action == STORE) {
+        // Update cache statistics for write access
+        update_stats(cache->stats, true, false, false, STORE);
+        cache->lines[index][i].dirty_f = true; // Set dirty flag
+      }
+      // Update LRU_way
+      cache->lru_way[index] = i;
+      return true;
+    }
+  }
 
-   
-  return true;  // cache hit should return true
+  // Cache miss
+  if (action == LOAD) {
+    // Update cache statistics for read access
+    update_stats(cache->stats, false, false, false, LOAD);
+  } else if (action == STORE) {
+    // Update cache statistics for write access
+    update_stats(cache->stats, false, false, false, STORE);
+  }
+
+  // Find the LRU line
+  int lru_line = cache->lru_way[index];
+
+  // Update cache tags, state, and dirty flags
+  cache->lines[index][lru_line].tag = tag;
+  cache->lines[index][lru_line].state = VALID;
+  cache->lines[index][lru_line].dirty_f = false;
+
+  
+
+  // Update LRU_way
+  // cache->lru_way[index] = lru_line;
+
+  return false;  // cache miss should return false
 }
+
