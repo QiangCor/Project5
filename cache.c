@@ -39,11 +39,11 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // initializes cache tags to 0, dirty bits to false,
   // state to INVALID, and LRU bits to 0
   // FIX THIS CODE!
-  for (int i = 0; i < 1; i++) {
-    for (int j = 0; j < 1; j++) {
-      // body goes here
-    }
-  }
+  // for (int i = 0; i < 1; i++) {
+  //   for (int j = 0; j < 1; j++) {
+  //     // body goes here
+  //   }
+  // }
 
   for (int i = 0; i < cache->n_set; i++) {
     cache->lines[i] = malloc(sizeof(cache_line_t) * cache->assoc);
@@ -60,6 +60,11 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
 
   cache->protocol = protocol;
   cache->lru_on_invalidate_f = lru_on_invalidate_f;
+
+  cache->dirty_bits = malloc(cache->n_set * sizeof(bool*));
+  for (int i = 0; i < cache->n_set; i++) {
+    cache->dirty_bits[i] = calloc(cache->assoc, sizeof(bool));
+  }
   
   return cache;
 }
