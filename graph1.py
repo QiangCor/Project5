@@ -55,7 +55,7 @@ def graph():
         p,=plt.plot([2**i for i in cap_range], miss_rate[a])
         plots.append(p)
     plt.legend(plots, ['assoc %d' % a for a in assoc_range])
-    plt.xscale('log', basex=2)
+    plt.xscale('log', base=2)
     plt.title('Graph #1: Miss Rate vs Cache Size')
     plt.xlabel('Capacity')
     plt.ylabel('Miss Rate')

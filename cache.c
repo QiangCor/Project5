@@ -35,15 +35,10 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   cache->lru_way = malloc(sizeof(int) * cache->n_set);
 
   
-  
   // initializes cache tags to 0, dirty bits to false,
   // state to INVALID, and LRU bits to 0
   // FIX THIS CODE!
-  // for (int i = 0; i < 1; i++) {
-  //   for (int j = 0; j < 1; j++) {
-  //     // body goes here
-  //   }
-  // }
+  
 
   for (int i = 0; i < cache->n_set; i++) {
     cache->lines[i] = malloc(sizeof(cache_line_t) * cache->assoc);
@@ -60,14 +55,13 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
 
   cache->protocol = protocol;
   cache->lru_on_invalidate_f = lru_on_invalidate_f;
-
-  cache->dirty_bits = malloc(cache->n_set * sizeof(bool*));
-  for (int i = 0; i < cache->n_set; i++) {
-    cache->dirty_bits[i] = calloc(cache->assoc, sizeof(bool));
-  }
   
   return cache;
+  
 }
+
+
+
 
 /* Given a configured cache, returns the tag portion of the given address.
  *
@@ -133,10 +127,7 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   unsigned long tag = get_cache_tag(cache, addr);
   unsigned long index = get_cache_index(cache, addr);
-  unsigned long block_addr = get_cache_block_addr(cache, addr);
-  printf("tag: %lu\n", tag);
-  printf("index: %lu\n", index);
-  printf("block_addr %lu\n", block_addr);
+ 
 
   // Look up the address in the cache
   for (int i = 0; i < cache->assoc; i++) {
@@ -155,14 +146,14 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
       return true;
     }
   }
-
+  /*
   // Cache miss
   if (action == LOAD) {
     // Update cache statistics for read access
-    update_stats(cache->stats, false, false, false, LOAD);
+    update_stats(cache->stats, false, false, true, LOAD);
   } else if (action == STORE) {
     // Update cache statistics for write access
-    update_stats(cache->stats, false, false, false, STORE);
+    update_stats(cache->stats, false, false, true, STORE);
   }
 
   // Find the LRU line
@@ -174,8 +165,25 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action) {
   cache->lines[index][lru_line].tag = tag;
   cache->lines[index][lru_line].state = VALID;
   cache->lines[index][lru_line].dirty_f = false;
-
+  */
   
+  int lru_line = cache->lru_way[index];
+  cache->lru_way[index]= (lru_line + 1) % cache->assoc;
+  bool wb = cache->lines[index][lru_line].dirty_f && (cache->lines[index][lru_line].state = VALID); 
+
+  // Update cache tags, state, and dirty flags
+  cache->lines[index][lru_line].tag = tag;
+  cache->lines[index][lru_line].state = VALID;
+  cache->lines[index][lru_line].dirty_f = (action == STORE);
+
+  // Cache miss
+  if (action == LOAD) {
+    // Update cache statistics for read access
+    update_stats(cache->stats, false, wb, false, LOAD);
+  } else if (action == STORE) { 
+    // Update cache statistics for write access
+    update_stats(cache->stats, false, wb, false, STORE);
+  }
 
   // Update LRU_way
   // cache->lru_way[index] = lru_line;

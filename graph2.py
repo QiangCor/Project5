@@ -1,27 +1,66 @@
+#!/usr/bin/python3
+
+import sys
+import os
+import time
 import matplotlib.pyplot as plt
-import numpy as np
 
-# Cache sizes (in log scale)
-cache_sizes = [14, 15, 16, 17, 18]  # Example cache sizes (adjust as needed)
-# Bus write traffic for direct-mapped cache
-direct_mapped_traffic = [100, 200, 300, 400, 500]  # Example traffic data (adjust as needed)
-# Bus write traffic for 2-way set associative cache
-two_way_traffic = [120, 220, 320, 420, 520]  # Example traffic data (adjust as needed)
-# Bus write traffic for 4-way set associative cache
-four_way_traffic = [140, 240, 340, 440, 540]  # Example traffic data (adjust as needed)
+# associtivity range
+assoc_range = [1, 2, 4]
+# block size range
+bsize_range = [b for b in range(6, 7)]
+# capacity range
+cap_range = [c for c in range(11, 21)]
+# number of cores (1, 2, 4)
+cores = [1]
+# coherence protocol: (none, vi, or msi)
+protocol='none'
 
-# Plot the graph
-plt.figure(figsize=(10, 6))
-plt.plot(cache_sizes, direct_mapped_traffic, label='Direct-Mapped Cache', marker='o')
-plt.plot(cache_sizes, two_way_traffic, label='2-Way Set Associative Cache', marker='s')
-plt.plot(cache_sizes, four_way_traffic, label='4-Way Set Associative Cache', marker='^')
-plt.xlabel('Cache Size (log scale)')
-plt.ylabel('Bus Write Traffic (log scale)')
-plt.title('Bus Write Traffic vs Cache Size for Write-Back Caches')
-plt.legend()
-plt.grid(True)
-plt.yscale('log')
-plt.xscale('log')
+expname='exp1'
+figname='graph2.png'
 
-# Save the plot as a PNG file
-plt.savefig('graph2.png')
+
+def get_stats(logfile, key):
+    for line in open(logfile):
+        if line[2:].startswith(key):
+            line = line.split()
+            return float(line[1])
+    return 0
+
+def run_exp(logfile, core, cap, bsize, assoc):
+    trace = 'trace.%dt.long.txt' % core
+    cmd="./p5 -t %s -p %s -n %d -cache %d %d %d >> %s" % (
+            trace, protocol, core, cap, bsize, assoc, logfile)
+    print(cmd)
+    os.system(cmd)
+
+def graph():
+    timestr = time.strftime("%m.%d-%H_%M_%S")
+    folder = "results/"+expname+"/"+timestr+"/"
+    os.system("mkdir -p "+folder)
+
+    bus_traffic_wb = {a:[] for a in assoc_range}
+
+    for a in assoc_range:
+        for b in bsize_range:
+            for c in cap_range:
+                for d in cores:
+                    logfile = folder+"%s-%02d-%02d-%02d-%02d.out" % (
+                            protocol, d, c, b, a)
+                    run_exp(logfile, d, c, b, a)
+                    bus_traffic_wb[a].append(get_stats(logfile, 'B_written_cache_to_bus_wb'))
+
+    plots = []
+    for a in bus_traffic_wb:
+        p,=plt.plot([2**i for i in cap_range], bus_traffic_wb[a])
+        plots.append(p)
+    plt.legend(plots, ['assoc %d' % a for a in assoc_range])
+    plt.xscale('log', base=2)
+    plt.yscale('log', base=2)
+    plt.title('Graph #2: Bus Write Traffic vs Cache Size')
+    plt.xlabel('Capacity (log)')
+    plt.ylabel('Bus Traffic')
+    plt.savefig(figname)
+    plt.show()
+
+graph()
